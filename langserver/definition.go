@@ -57,6 +57,7 @@ func (v *specifiedFieldVisitor) Visit(node ast.Node) (w ast.Visitor) {
 			}
 		}
 	case *ast.Field:
+		log.Println(n.TypeName, " ", n.Name, " ", n.Pos().Line, " ", n.Start.Character, " ", n.End.Character)
 		if strings.Contains(fileName, n.File().Name) &&
 			n.Pos().Line == line &&
 			n.Start.Character <= character && character <= n.End.Character {
@@ -79,7 +80,8 @@ func (v *foundMessageVisitor) Visit(node ast.Node) (w ast.Visitor) {
 	// walk for getting specifiedField definition
 	switch n := node.(type) {
 	case *ast.Message:
-		if v.specifiedField.TypeName == n.Name { // TODO: Name check only??
+		splitedName := strings.Split(v.specifiedField.TypeName, ".")
+		if splitedName[len(splitedName)-1] == n.Name { // TODO: Name check only??
 			v.foundMessage = n
 		}
 		return nil
@@ -149,7 +151,7 @@ func resolve(ctx context.Context, params lsp.TextDocumentPositionParams) (*lsp.L
 			Line      int    `json:"line"`
 			Character int    `json:"character"`
 		}{
-			Name:      nv.specifiedField.Name,
+			Name:      nv.specifiedField.TypeName,
 			Line:      nv.specifiedField.Pos().Line,
 			Character: nv.specifiedField.Pos().Character,
 		}
