@@ -8,14 +8,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/NoahOrberg/protobuf_langserver/protobuf"
 	"github.com/NoahOrberg/x/protobuf/ast"
 	"github.com/sourcegraph/go-lsp"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-func (h *handler) handleDefinition(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, params lsp.TextDocumentPositionParams) (interface{}, error) {
-	ptrLoc, err := resolve(ctx, params)
+func (h *handler) handleDefinition(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, params *lsp.TextDocumentPositionParams) (interface{}, error) {
+	ptrLoc, err := resolve(ctx, params, h.ast)
 	if ptrLoc == nil {
 		return nil, err
 	}
@@ -29,7 +28,7 @@ type specifiedFieldVisitor struct {
 
 	// resp
 	specifiedField *ast.Field
-	foundMessage   *ast.Message
+	foundMessage   PosFiler
 }
 
 func (v *specifiedFieldVisitor) Visit(node ast.Node) (w ast.Visitor) {
@@ -72,7 +71,7 @@ type foundMessageVisitor struct {
 	specifiedField *ast.Field
 
 	// resp
-	foundMessage *ast.Message
+	foundMessage PosFiler
 }
 
 func (v *foundMessageVisitor) Visit(node ast.Node) (w ast.Visitor) {
@@ -83,28 +82,29 @@ func (v *foundMessageVisitor) Visit(node ast.Node) (w ast.Visitor) {
 			v.foundMessage = n
 		}
 		return nil
+	case *ast.Enum:
+		if v.specifiedField.TypeName == n.Name { // TODO: Name check only??
+			v.foundMessage = n
+		}
+		return nil
 	}
 
 	return v
 }
 
-func resolve(ctx context.Context, params lsp.TextDocumentPositionParams) (*lsp.Location, error) {
+type PosFiler interface {
+	Pos() ast.Position
+	File() *ast.File
+}
+
+func resolve(ctx context.Context, params *lsp.TextDocumentPositionParams, fileSet *ast.FileSet) (*lsp.Location, error) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Print(err)
 		}
 	}()
 
-	fileSet, err := protobuf.Parse(
-		string(params.TextDocument.URI))
-	if err != nil {
-		return nil, err
-	}
-
 	dir, _ := filepath.Split(string(params.TextDocument.URI))
-	if err != nil {
-		return nil, err
-	}
 
 	v := &specifiedFieldVisitor{
 		srcFileName:  string(params.TextDocument.URI),
@@ -116,7 +116,7 @@ func resolve(ctx context.Context, params lsp.TextDocumentPositionParams) (*lsp.L
 		ast.WalkFile(v, file)
 	}
 
-	var foundMessage *ast.Message
+	var foundMessage PosFiler
 	var nv *foundMessageVisitor // NOTE: avoid error
 	if v.foundMessage != nil {
 		foundMessage = v.foundMessage
@@ -159,8 +159,8 @@ func resolve(ctx context.Context, params lsp.TextDocumentPositionParams) (*lsp.L
 	foundMessage = nv.foundMessage
 
 resp:
-	gotLine := foundMessage.Position.Line - 1      // NOTE: Coz this is 1-based
-	gotChar := foundMessage.Position.Character - 1 // NOTE: Coz this is 1-based
+	gotLine := foundMessage.Pos().Line - 1      // NOTE: Coz this is 1-based
+	gotChar := foundMessage.Pos().Character - 1 // NOTE: Coz this is 1-based
 	res := lsp.Location{
 		URI: lsp.DocumentURI(dir + foundMessage.File().Name),
 		Range: lsp.Range{
