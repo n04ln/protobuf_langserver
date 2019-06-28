@@ -9,15 +9,26 @@ import (
 	"github.com/NoahOrberg/x/protobuf/parser"
 )
 
+var (
+	targetDir, targetFileName string
+)
+
 func Parse(target string) (*ast.FileSet, error) {
-	targetDir, targetFileName := filepath.Split(target)
+	targetDir, targetFileName = filepath.Split(target)
+
+	targetDir = strings.TrimPrefix(targetDir, "file://")
+
+	paths := GetPaths()
+	return parser.ParseFiles([]string{targetFileName}, paths)
+}
+
+func GetPaths() []string {
 
 	path := os.Getenv("PROTO_PATH") +
-		":" + os.Getenv("GOPATH") + "/src/github.com/protocolbuffers/protobuf/src" + // TODO: modify it!!!!
+		":" + os.Getenv("GOPATH") + "/src/github.com/protocolbuffers/protobuf/src" +
 		":" + targetDir
 
 	paths := strings.Split(path, ":")
 
-	paths = append([]string{"sample"}, paths...)
-	return parser.ParseFiles([]string{targetFileName}, paths)
+	return paths
 }

@@ -3,7 +3,7 @@
 
 [[projects]]
   branch = "n/master"
-  digest = "1:4d2807ffaad2d11f95e940cfd2220795d6302245ef932b41b06ee008bd80255d"
+  digest = "1:a32b99e0b0914ebd342c2454056c66a649e2f4c853aea24357fc5af7b9d86453"
   name = "github.com/NoahOrberg/x"
   packages = [
     "protobuf/ast",
