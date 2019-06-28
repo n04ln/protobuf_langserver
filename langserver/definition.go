@@ -204,14 +204,18 @@ resp:
 		if ok := strings.HasSuffix(d, "/"); !ok {
 			delimiter = "/"
 		}
+
 		fn := d + delimiter + foundMessage.File().Name
 		if ok := isExist(fn); ok {
 			fname = fn
 		}
 	}
+
+	// NOTE: "file://" prefix is needed for Language Server Protocol
 	if ok := strings.HasPrefix(fname, "file://"); !ok {
 		fname = "file://" + fname
 	}
+
 	res := lsp.Location{
 		URI: lsp.DocumentURI(fname),
 		Range: lsp.Range{
