@@ -13,6 +13,30 @@
   revision = "4645117bfa50906ea71cffd21412042e4674f6b4"
 
 [[projects]]
+  digest = "1:86c75d55fde56a814f69515d092963634d6f5f6bc1c3e9091b01fbe373a9546e"
+  name = "github.com/k0kubun/pp"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "3d73dea227e0711e38b911ffa6fbafc8ff6b2991"
+  version = "v3.0.1"
+
+[[projects]]
+  digest = "1:7c084e0e780596dd2a7e20d25803909a9a43689c153de953520dfbc0b0e51166"
+  name = "github.com/mattn/go-colorable"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "8029fb3788e5a4a9c00e415f586a6d033f5d38b3"
+  version = "v0.1.2"
+
+[[projects]]
+  digest = "1:9b90c7639a41697f3d4ad12d7d67dfacc9a7a4a6e0bbfae4fc72d0da57c28871"
+  name = "github.com/mattn/go-isatty"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "1311e847b0cb909da63b5fecfb5370aa66236465"
+  version = "v0.0.8"
+
+[[projects]]
   branch = "master"
   digest = "1:6533bbba9e811f4febbd570b309cfeddf997056ddc5ca538bf4a49fb07dc81ab"
   name = "github.com/sourcegraph/go-lsp"
@@ -28,12 +52,21 @@
   pruneopts = "UT"
   revision = "35a74f039c6a54af5bf0402d8f7da046c3f63ba2"
 
+[[projects]]
+  branch = "master"
+  digest = "1:730ba27cd66db3b98ec8f51a6f20d45ec277d490cca36b1f54e31d3fcaf4840e"
+  name = "golang.org/x/sys"
+  packages = ["unix"]
+  pruneopts = "UT"
+  revision = "04f50cda93cbb67f2afa353c52f342100e80e625"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
     "github.com/NoahOrberg/x/protobuf/ast",
     "github.com/NoahOrberg/x/protobuf/parser",
+    "github.com/k0kubun/pp",
     "github.com/sourcegraph/go-lsp",
     "github.com/sourcegraph/jsonrpc2",
   ]

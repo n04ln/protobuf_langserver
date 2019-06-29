@@ -107,9 +107,12 @@ func (v *foundMessageVisitor) Visit(node ast.Node) (w ast.Visitor) {
 		log.Println(pkg, node.File().Package)
 		log.Println(splitedName, n.Name)
 
-		if splitedName == n.Name &&
-			same(pkg, node.File().Package) {
-			v.foundMessage = n
+		if splitedName == n.Name {
+			if len(pkg) == 0 { // TODO: why pkg is zero-array? (when same package)
+				v.foundMessage = n
+			} else if same(pkg, node.File().Package) {
+				v.foundMessage = n
+			}
 		}
 		return nil
 	case *ast.Enum:
