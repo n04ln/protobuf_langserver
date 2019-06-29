@@ -7,9 +7,12 @@ import (
 
 	"github.com/sourcegraph/go-lsp"
 	"github.com/sourcegraph/jsonrpc2"
+	"log"
+	"github.com/k0kubun/pp"
 )
 
 func (h *handler) init(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) {
+	log.Println("invoked initialize method")
 	if h.initReq != nil {
 		return nil, errors.New("language server is already initialized")
 	}
@@ -24,7 +27,7 @@ func (h *handler) init(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.R
 	h.initReq = &params
 
 	kind := lsp.TDSKIncremental
-	return lsp.InitializeResult{
+	res := lsp.InitializeResult{
 		Capabilities: lsp.ServerCapabilities{
 			TextDocumentSync: &lsp.TextDocumentSyncOptionsOrKind{
 				Kind: &kind,
@@ -44,5 +47,9 @@ func (h *handler) init(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.R
 			XWorkspaceSymbolByProperties: false,
 			SignatureHelpProvider:        &lsp.SignatureHelpOptions{TriggerCharacters: []string{"(", ","}},
 		},
-	}, nil
+	}
+
+	log.Println(pp.Sprint(res))
+
+	return res, nil
 }

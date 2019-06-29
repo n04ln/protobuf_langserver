@@ -20,21 +20,8 @@ func main() {
 }
 
 func run() error {
-	lf := os.Getenv("HOME") + "/" + "p.log"
-	logfile := &lf
-	var logW io.Writer
-	if *logfile == "" {
-		logW = os.Stderr
-	} else {
-		f, err := os.Create(*logfile)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		logW = io.MultiWriter(os.Stderr, f)
-	}
+	log.SetOutput(os.Stderr)
 
-	log.SetOutput(logW)
 	newHandler := func() (jsonrpc2.Handler, io.Closer) {
 		return langserver.NewHandler(), ioutil.NopCloser(strings.NewReader(""))
 	}
