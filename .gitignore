@@ -2,3 +2,4 @@ vendor/
 sand/
 trace/
 _vendor*
+.idea/
