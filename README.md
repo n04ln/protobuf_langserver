@@ -5,12 +5,12 @@
 ## Installation
 
 ``` sh
-$ make dep && make install
+$ make install
 ```
 
 ## Usage
 
-- plz write below code in your `.config/nvim/init.vim`
+- plz write below code in your `.config/nvim/init.vim` if u use `vim-lsp`.
 
 ``` vim
 if executable('protobuf_langserver')
