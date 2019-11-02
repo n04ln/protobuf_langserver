@@ -2,7 +2,7 @@ version: 2.0
 jobs:
   base:
     docker:
-    - image: circleci/golang:1.11.1
+    - image: circleci/golang:1.12.0
     working_directory: /go/src/github.com/NoahOrberg/protobuf_langserver
     steps:
     - checkout
