@@ -1,4 +1,4 @@
 install:
-	GO111MODULE=on go build -o protobuf_langserver
+	GO111MODULE=on go install
 
 PHONY: install
