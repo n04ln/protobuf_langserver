@@ -1,7 +1,4 @@
-dep:
-	dep ensure
-
 install:
-	go install
+	GO111MODULE=on go build -o protobuf_langserver
 
-PHONY: dep install
+PHONY: install
