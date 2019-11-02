@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"io"
 	"io/ioutil"
 	"log"
@@ -12,6 +13,15 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 )
 
+var (
+	logFile string
+)
+
+func init() {
+	flag.StringVar(&logFile, "log", "", "specify log file path locaiton")
+	flag.Parse()
+}
+
 func main() {
 	if err := run(); err != nil {
 		log.Println(err.Error())
@@ -20,8 +30,19 @@ func main() {
 }
 
 func run() error {
-	log.SetOutput(os.Stderr)
+	var logW io.Writer
+	if logFile == "" {
+		logW = os.Stderr
+	} else {
+		f, err := os.Create(logFile)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		logW = io.MultiWriter(os.Stderr, f)
+	}
 
+	log.SetOutput(logW)
 	newHandler := func() (jsonrpc2.Handler, io.Closer) {
 		return langserver.NewHandler(), ioutil.NopCloser(strings.NewReader(""))
 	}
