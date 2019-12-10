@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 
+	"log"
+
 	"github.com/sourcegraph/go-lsp"
 	"github.com/sourcegraph/jsonrpc2"
-	"log"
-	"github.com/k0kubun/pp"
 )
 
 func (h *handler) init(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) {
@@ -48,8 +48,6 @@ func (h *handler) init(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.R
 			SignatureHelpProvider:        &lsp.SignatureHelpOptions{TriggerCharacters: []string{"(", ","}},
 		},
 	}
-
-	log.Println(pp.Sprint(res))
 
 	return res, nil
 }

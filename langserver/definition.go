@@ -12,7 +12,6 @@ import (
 
 	"github.com/NoahOrberg/protobuf_langserver/protobuf"
 	"github.com/NoahOrberg/x/protobuf/ast"
-	"github.com/k0kubun/pp"
 	"github.com/sourcegraph/go-lsp"
 	"github.com/sourcegraph/jsonrpc2"
 )
@@ -154,7 +153,6 @@ func resolve(ctx context.Context, params *lsp.TextDocumentPositionParams, fileSe
 	var nv *foundMessageVisitor // NOTE: avoid error
 	if v.foundMessage != nil {
 		foundMessage = v.foundMessage
-		log.Println(pp.Sprint(foundMessage))
 		goto resp
 	}
 
@@ -234,7 +232,6 @@ resp:
 	}
 	// vb, _ := json.Marshal(v)
 	// nvb, _ := json.Marshal(nv)
-	log.Println(pp.Sprint(res))
 	return &res, nil // fmt.Errorf("%v &&& %v", vb, nvb)
 }
 
