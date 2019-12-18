@@ -12,49 +12,33 @@ import (
 func TestInit(t *testing.T) {
 	tcs := []struct {
 		f        func()
+		name     string
 		expected string
 	}{
 		{
 			f: func() {
-				log.L().Info("Info")
+				log.L().Info("some data")
 			},
-			expected: "Info",
-		},
-		{
-			f: func() {
-				log.L().Warn("Warn")
-			},
-			expected: "Warn",
-		},
-		{
-			f: func() {
-				log.L().Error("Error")
-			},
-			expected: "Error",
-		},
-		{
-			f: func() {
-				log.L().Fatal("Fatal")
-			},
-			expected: "Fatal",
+			name:     "normal case",
+			expected: "\tinfo\tsome data",
 		},
 	}
 
 	for _, tc := range tcs {
-		buf := new(bytes.Buffer)
+		t.Run(tc.name, func(t *testing.T) {
+			buf := new(bytes.Buffer)
 
-		log.Init(buf)
-		tc.f()
+			log.Init(buf)
+			tc.f()
 
-		actual, err := ioutil.ReadAll(buf)
-		if err != nil {
-			t.Fatalf("expected err is nil, buf got %s", err)
-		}
+			actual, err := ioutil.ReadAll(buf)
+			if err != nil {
+				t.Fatalf("expected err is nil, buf got %s", err)
+			}
 
-		println(string(actual))
-
-		if strings.HasSuffix(string(actual), tc.expected) {
-			t.Fatalf("expected %s, but got %s", tc.expected, actual)
-		}
+			if strings.HasSuffix(string(actual), tc.expected) {
+				t.Fatalf("expected %s, but got %s", tc.expected, actual)
+			}
+		})
 	}
 }

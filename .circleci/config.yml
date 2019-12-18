@@ -3,9 +3,12 @@ jobs:
   base:
     docker:
     - image: circleci/golang:1.12.0
-    working_directory: /go/src/github.com/NoahOrberg/protobuf_langserver
+    working_directory: /go/src/github.com/n04ln/protobuf_langserver
     steps:
     - checkout
+    - run:
+        name: test
+        command: make test
     - run:
         name: installation (build)
         command: make install
