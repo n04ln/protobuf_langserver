@@ -34,6 +34,24 @@ type specifiedFieldVisitor struct {
 	foundMessage   PosFiler
 }
 
+type foundMessageVisitor struct {
+	// args
+	specifiedField PosFileTypeNamer
+
+	// resp
+	foundMessage PosFiler
+}
+
+type PosFiler interface {
+	Pos() ast.Position
+	File() *ast.File
+}
+
+type PosFileTypeNamer interface {
+	PosFiler
+	TypeName() string
+}
+
 type InOutType struct {
 	pos      ast.Position
 	file     *ast.File
@@ -133,21 +151,19 @@ func (v *specifiedFieldVisitor) Visit(node ast.Node) (w ast.Visitor) {
 		if strings.Contains(fileName, n.File().Name) &&
 			n.Pos().Line == line &&
 			n.Start.Character <= character && character <= n.End.Character {
-			v.specifiedField = &FieldWrap{
-				field: n,
+
+			if nn, ok := n.Type.(*ast.Message); ok {
+				// NOTE: for inner message
+				v.foundMessage = nn
+			} else {
+				v.specifiedField = &FieldWrap{
+					field: n,
+				}
 			}
 			return nil
 		}
 	}
 	return v
-}
-
-type foundMessageVisitor struct {
-	// args
-	specifiedField PosFileTypeNamer
-
-	// resp
-	foundMessage PosFiler
 }
 
 func same(s1, s2 []string) bool {
@@ -198,16 +214,6 @@ func (v *foundMessageVisitor) Visit(node ast.Node) (w ast.Visitor) {
 	}
 
 	return v
-}
-
-type PosFiler interface {
-	Pos() ast.Position
-	File() *ast.File
-}
-
-type PosFileTypeNamer interface {
-	PosFiler
-	TypeName() string
 }
 
 func resolve(ctx context.Context, params *lsp.TextDocumentPositionParams, fileSet *ast.FileSet) (*lsp.Location, error) {
@@ -277,8 +283,7 @@ func resolve(ctx context.Context, params *lsp.TextDocumentPositionParams, fileSe
 	foundMessage = nv.foundMessage
 
 resp:
-
-	gotLine := foundMessage.Pos().Line - 1 // NOTE: Coz this is 1-based
+	gotLine := foundMessage.Pos().Line - 1      // NOTE: Coz this is 1-based
 	gotChar := foundMessage.Pos().Character - 1 // NOTE: Coz this is 1-based
 
 	var fname string
