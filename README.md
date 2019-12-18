@@ -1,6 +1,6 @@
 # protobuf_langserver
 
-[![CircleCI](https://circleci.com/gh/NoahOrberg/protobuf_langserver.svg?style=svg)](https://circleci.com/gh/NoahOrberg/protobuf_langserver)
+[![CircleCI](https://circleci.com/gh/n04ln/protobuf_langserver.svg?style=svg)](https://circleci.com/gh/n04ln/protobuf_langserver)
 
 ## Installation
 
