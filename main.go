@@ -5,12 +5,14 @@ import (
 	"flag"
 	"io"
 	"io/ioutil"
-	"log"
+	stdlog "log"
 	"os"
 	"strings"
 
 	"github.com/NoahOrberg/protobuf_langserver/langserver"
+	"github.com/NoahOrberg/protobuf_langserver/log"
 	"github.com/sourcegraph/jsonrpc2"
+	"go.uber.org/zap"
 )
 
 var (
@@ -24,7 +26,7 @@ func init() {
 
 func main() {
 	if err := run(); err != nil {
-		log.Println(err.Error())
+		log.L().Fatal(err.Error())
 		os.Exit(1)
 	}
 }
@@ -41,15 +43,16 @@ func run() error {
 		defer f.Close()
 		logW = io.MultiWriter(os.Stderr, f)
 	}
+	log.Init(logW)
+	stdlog.SetOutput(logW)
 
-	log.SetOutput(logW)
 	newHandler := func() (jsonrpc2.Handler, io.Closer) {
 		return langserver.NewHandler(), ioutil.NopCloser(strings.NewReader(""))
 	}
 
 	var connOpt []jsonrpc2.ConnOpt
 
-	log.Println("protobuf_langserver: reading on stdin, writing on stdout")
+	log.L().Info("protobuf_langserver: reading on stdin, writing on stdout")
 	handler, closer := newHandler()
 	<-jsonrpc2.NewConn(
 		context.Background(),
@@ -61,9 +64,9 @@ func run() error {
 		DisconnectNotify()
 	err := closer.Close()
 	if err != nil {
-		log.Println(err)
+		log.L().Fatal("failed closer.Close()", zap.Error(err))
 	}
-	log.Println("connection closed")
+	log.L().Info("connection closed")
 
 	return nil
 }

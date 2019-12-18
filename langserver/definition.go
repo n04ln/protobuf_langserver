@@ -4,16 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
-	"os"
-
+	"github.com/NoahOrberg/protobuf_langserver/log"
 	"github.com/NoahOrberg/protobuf_langserver/protobuf"
 	"github.com/NoahOrberg/x/protobuf/ast"
 	"github.com/sourcegraph/go-lsp"
 	"github.com/sourcegraph/jsonrpc2"
+	"go.uber.org/zap"
 )
 
 func (h *handler) handleDefinition(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, params *lsp.TextDocumentPositionParams) (interface{}, error) {
@@ -30,39 +30,112 @@ type specifiedFieldVisitor struct {
 	srcLine, srcCharacter int
 
 	// resp
-	specifiedField *ast.Field
+	specifiedField PosFileTypeNamer
 	foundMessage   PosFiler
+}
+
+type InOutType struct {
+	pos      ast.Position
+	file     *ast.File
+	typeName string
+}
+
+func (t *InOutType) Pos() ast.Position {
+	return t.pos
+}
+func (t *InOutType) File() *ast.File {
+	return t.file
+}
+
+func (t *InOutType) TypeName() string {
+	return t.typeName
+}
+
+type FieldWrap struct {
+	field *ast.Field
+}
+
+func (f *FieldWrap) Pos() ast.Position {
+	return f.field.Pos()
+}
+func (f *FieldWrap) File() *ast.File {
+	return f.File()
+}
+
+func (f *FieldWrap) TypeName() string {
+	return f.field.TypeName
 }
 
 func (v *specifiedFieldVisitor) Visit(node ast.Node) (w ast.Visitor) {
 	// walk for getting a userspecified field
 	fileName, line, character := v.srcFileName, v.srcLine, v.srcCharacter
-
 	switch n := node.(type) {
 	case *ast.Method:
+		log.L().Info(n.InTypeName + " - " + n.OutTypeName)
+
 		if strings.Contains(fileName, n.File().Name) &&
 			n.InTypeNamePosStart.Line == line &&
 			n.InTypeNamePosStart.Character <= character && character <= n.InTypeNamePosEnd.Character {
-			switch n := n.InType.(type) {
-			case *ast.Message:
-				v.foundMessage = n
-				return nil
+
+			log.L().Info("Found!")
+			v.specifiedField = &InOutType{
+				pos:      n.InTypeNamePosStart,
+				file:     n.File(),
+				typeName: n.InTypeName,
 			}
+			return nil
 		}
+
 		if strings.Contains(fileName, n.File().Name) &&
 			n.OutTypeNamePosStart.Line == line &&
 			n.OutTypeNamePosStart.Character <= character && character <= n.OutTypeNamePosEnd.Character {
-			switch n := n.OutType.(type) {
-			case *ast.Message:
-				v.foundMessage = n
-				return nil
+
+			log.L().Info("Found!")
+			v.specifiedField = &InOutType{
+				pos:      n.OutTypeNamePosStart,
+				file:     n.File(),
+				typeName: n.OutTypeName,
 			}
+			return nil
 		}
+
+		// TODO: Fix it.
+		// n.InType(type) is *ast.File, therefore NoahOrberg/x/protobuf repository is broken.
+
+		// if strings.Contains(fileName, n.File().Name) &&
+		// 	n.InTypeNamePosStart.Line == line &&
+		// 	n.InTypeNamePosStart.Character <= character && character <= n.InTypeNamePosEnd.Character {
+		// 	switch nn := n.InType.(type) {
+		// 	case *ast.Message:
+		// 		log.L().Info("Found!")
+		// 		v.foundMessage = nn
+		// 		return nil
+		// 	}
+		// }
+		//
+		// log.L().Info("params", zap.String("arg", fileName), zap.String("walked", n.File().Name))
+		//
+		// if strings.Contains(fileName, n.File().Name) &&
+		// 	n.OutTypeNamePosStart.Line == line &&
+		// 	n.OutTypeNamePosStart.Character <= character && character <= n.OutTypeNamePosEnd.Character {
+		// 	switch nn := n.OutType.(type) {
+		// 	case *ast.Message:
+		// 		log.L().Info("Found!")
+		// 		v.foundMessage = nn
+		// 		return nil
+		// 	case *ast.File:
+		// 		log.L().Info("Found!")
+		// 		stdlog.Println("name is ", nn.Name)
+		// 		stdlog.Println("messages is ", nn.Messages)
+		// 	}
+		// }
 	case *ast.Field:
 		if strings.Contains(fileName, n.File().Name) &&
 			n.Pos().Line == line &&
 			n.Start.Character <= character && character <= n.End.Character {
-			v.specifiedField = n
+			v.specifiedField = &FieldWrap{
+				field: n,
+			}
 			return nil
 		}
 	}
@@ -71,7 +144,7 @@ func (v *specifiedFieldVisitor) Visit(node ast.Node) (w ast.Visitor) {
 
 type foundMessageVisitor struct {
 	// args
-	specifiedField *ast.Field
+	specifiedField PosFileTypeNamer
 
 	// resp
 	foundMessage PosFiler
@@ -101,10 +174,12 @@ func (v *foundMessageVisitor) Visit(node ast.Node) (w ast.Visitor) {
 	// walk for getting specifiedField definition
 	switch n := node.(type) {
 	case *ast.Message:
-		pkg, splitedName := toPkg(v.specifiedField.TypeName)
+		pkg, splitedName := toPkg(v.specifiedField.TypeName())
 
-		log.Println(pkg, node.File().Package)
-		log.Println(splitedName, n.Name)
+		log.L().Info("print info",
+			zap.Strings("pkg", pkg), zap.Strings("nodePackage", node.File().Package))
+		log.L().Info("print info",
+			zap.String("splitedName", splitedName), zap.String("nName", n.Name))
 
 		if splitedName == n.Name {
 			if len(pkg) == 0 { // TODO: why pkg is zero-array? (when same package)
@@ -115,7 +190,7 @@ func (v *foundMessageVisitor) Visit(node ast.Node) (w ast.Visitor) {
 		}
 		return nil
 	case *ast.Enum:
-		if v.specifiedField.TypeName == n.Name &&
+		if v.specifiedField.TypeName() == n.Name &&
 			same(v.specifiedField.File().Package, node.File().Package) {
 			v.foundMessage = n
 		}
@@ -130,10 +205,15 @@ type PosFiler interface {
 	File() *ast.File
 }
 
+type PosFileTypeNamer interface {
+	PosFiler
+	TypeName() string
+}
+
 func resolve(ctx context.Context, params *lsp.TextDocumentPositionParams, fileSet *ast.FileSet) (*lsp.Location, error) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Print(err)
+			log.L().Error("panic occured", zap.Error(err.(error)))
 		}
 	}()
 
@@ -146,13 +226,16 @@ func resolve(ctx context.Context, params *lsp.TextDocumentPositionParams, fileSe
 	}
 
 	for _, file := range fileSet.Files {
+		log.L().Info("start walk", zap.String("fname", file.Name))
 		ast.WalkFile(v, file)
+		log.L().Info("end walk")
 	}
 
 	var foundMessage PosFiler
 	var nv *foundMessageVisitor // NOTE: avoid error
 	if v.foundMessage != nil {
 		foundMessage = v.foundMessage
+		//TODO
 		goto resp
 	}
 
@@ -167,7 +250,6 @@ func resolve(ctx context.Context, params *lsp.TextDocumentPositionParams, fileSe
 			Char:     v.srcCharacter,
 		}
 		bs, _ := json.Marshal(errSt)
-		log.Println(2)
 		return nil, fmt.Errorf("not found specified field at specifiedFieldVisitor: %s", bs)
 	}
 
@@ -175,7 +257,9 @@ func resolve(ctx context.Context, params *lsp.TextDocumentPositionParams, fileSe
 		specifiedField: v.specifiedField,
 	}
 	for _, file := range fileSet.Files {
+		log.L().Info("start walk", zap.String("fname", file.Name))
 		ast.WalkFile(nv, file)
+		log.L().Info("end walk")
 	}
 	if nv.foundMessage == nil {
 		errSt := struct {
@@ -183,7 +267,7 @@ func resolve(ctx context.Context, params *lsp.TextDocumentPositionParams, fileSe
 			Line      int    `json:"line"`
 			Character int    `json:"character"`
 		}{
-			Name:      nv.specifiedField.TypeName,
+			Name:      nv.specifiedField.TypeName(),
 			Line:      nv.specifiedField.Pos().Line,
 			Character: nv.specifiedField.Pos().Character,
 		}
@@ -193,9 +277,8 @@ func resolve(ctx context.Context, params *lsp.TextDocumentPositionParams, fileSe
 	foundMessage = nv.foundMessage
 
 resp:
-	log.Println("complete")
 
-	gotLine := foundMessage.Pos().Line - 1      // NOTE: Coz this is 1-based
+	gotLine := foundMessage.Pos().Line - 1 // NOTE: Coz this is 1-based
 	gotChar := foundMessage.Pos().Character - 1 // NOTE: Coz this is 1-based
 
 	var fname string

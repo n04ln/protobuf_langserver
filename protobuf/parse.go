@@ -23,7 +23,7 @@ func Parse(target string) (*ast.FileSet, error) {
 }
 
 func GetPaths() []string {
-
+	// TODO: to intelligence
 	path := os.Getenv("PROTO_PATH") +
 		":" + os.Getenv("GOPATH") + "/src/github.com/protocolbuffers/protobuf/src" +
 		":" + targetDir

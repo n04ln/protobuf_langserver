@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 
-	"log"
-
+	"github.com/NoahOrberg/protobuf_langserver/log"
 	"github.com/sourcegraph/go-lsp"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
 func (h *handler) init(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) {
-	log.Println("invoked initialize method")
+	log.L().Info("invoked initialize method")
 	if h.initReq != nil {
 		return nil, errors.New("language server is already initialized")
 	}
