@@ -10,6 +10,7 @@ import (
 	"github.com/NoahOrberg/protobuf_langserver/log"
 	"github.com/NoahOrberg/protobuf_langserver/protobuf"
 	"github.com/NoahOrberg/x/protobuf/ast"
+	"github.com/pkg/errors"
 	"github.com/sourcegraph/go-lsp"
 	"github.com/sourcegraph/jsonrpc2"
 	"go.uber.org/zap"
@@ -45,6 +46,7 @@ func (h *handler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 		return nil, nil
 	case "textDocument/didOpen":
 		log.L().Info("invoked textDocument/didOpen method")
+
 		// TODO: Fix, because every time editor open it
 		params, err := toDocPosParams(req.Params)
 		if err != nil {
@@ -52,13 +54,18 @@ func (h *handler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 			if req.Params != nil {
 				params = string(*req.Params)
 			}
-			log.L().Error("failed toDocPosParams", zap.String("params", params))
+			log.L().Error("failed toDocPosParams", zap.String("params", params), zap.Error(err))
+			return nil, &jsonrpc2.Error{
+				Code:    jsonrpc2.CodeParseError,
+				Message: "invalid params",
+			}
 		}
 
 		// NOTE: if target file is already parsed, ignore it
 		if h.ast != nil {
 			for _, f := range h.ast.Files {
 				if strings.Contains(string(params.TextDocument.URI), f.Name) {
+					// NOTE: ignore
 					return nil, nil
 				}
 			}
@@ -67,7 +74,11 @@ func (h *handler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 		h.ast, err = parse(string(params.TextDocument.URI))
 		if err != nil {
 			log.L().Error("failed parse uri",
-				zap.String("uri", string(params.TextDocument.URI)))
+				zap.String("uri", string(params.TextDocument.URI)), zap.Error(err))
+			return nil, &jsonrpc2.Error{
+				Code:    jsonrpc2.CodeInvalidRequest,
+				Message: "cannot parse",
+			}
 		}
 		log.L().Info("success! parsed uri", zap.String("uri", string(params.TextDocument.URI)))
 
@@ -82,12 +93,20 @@ func (h *handler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 			if req.Params != nil {
 				params = string(*req.Params)
 			}
-			log.L().Error("failed toDocPosParams", zap.String("params", params))
+			log.L().Error("failed toDocPosParams", zap.String("params", params), zap.Error(err))
+			return nil, &jsonrpc2.Error{
+				Code:    jsonrpc2.CodeParseError,
+				Message: "invalid params",
+			}
 		}
 		h.ast, err = parse(string(params.TextDocument.URI))
 		if err != nil {
 			log.L().Error("failed parse uri",
 				zap.String("uri", string(params.TextDocument.URI)))
+			return nil, &jsonrpc2.Error{
+				Code:    jsonrpc2.CodeInvalidRequest,
+				Message: "cannot parse",
+			}
 		}
 		log.L().Info("success! parsed uri", zap.String("uri", string(params.TextDocument.URI)))
 
@@ -101,15 +120,18 @@ func (h *handler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 			if req.Params != nil {
 				params = string(*req.Params)
 			}
-			log.L().Error("failed toDocPosParams", zap.String("params", params))
-			return nil, err
+			log.L().Error("failed toDocPosParams", zap.String("params", params), zap.Error(err))
+			return nil, &jsonrpc2.Error{
+				Code:    jsonrpc2.CodeParseError,
+				Message: "invalid params",
+			}
 		}
 
-		log.L().Info("toDocPosParams", zap.Any("params", params), zap.Error(err))
+		log.L().Info("toDocPosParams", zap.Any("params", params))
 
 		resp, err := h.handleDefinition(ctx, conn, req, params)
 		if err != nil {
-			log.L().Error("handleDefinition", zap.Any("resp", resp), zap.Error(err))
+			log.L().Error("failed handleDefinition", zap.Any("resp", resp), zap.Error(err))
 			return nil, &jsonrpc2.Error{
 				Code:    jsonrpc2.CodeInternalError,
 				Message: fmt.Sprintf("failed resolve definition: %v", err),
@@ -127,16 +149,11 @@ func (h *handler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 
 func toDocPosParams(reqParams *json.RawMessage) (*lsp.TextDocumentPositionParams, error) {
 	if reqParams == nil {
-		return nil, &jsonrpc2.Error{
-			Code: jsonrpc2.CodeParseError,
-		}
+		return nil, errors.New("body is nil")
 	}
 	params := &lsp.TextDocumentPositionParams{}
 	if err := json.Unmarshal(*reqParams, params); err != nil {
-		return nil, &jsonrpc2.Error{
-			Code:    jsonrpc2.CodeInternalError,
-			Message: "failed unmarshal json",
-		}
+		return nil, errors.Wrap(err, "cannot unmarshal params")
 	}
 	return params, nil
 }
@@ -144,10 +161,7 @@ func toDocPosParams(reqParams *json.RawMessage) (*lsp.TextDocumentPositionParams
 func parse(uri string) (*ast.FileSet, error) {
 	ast, err := protobuf.Parse(uri)
 	if err != nil {
-		return nil, &jsonrpc2.Error{
-			Code:    jsonrpc2.CodeInternalError,
-			Message: fmt.Sprintf("failed parse: %s", uri),
-		}
+		return nil, errors.Wrap(err, "cannot parse protobuf")
 	}
 	return ast, nil
 }

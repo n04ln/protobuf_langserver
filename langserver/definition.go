@@ -24,24 +24,6 @@ func (h *handler) handleDefinition(ctx context.Context, conn *jsonrpc2.Conn, req
 	return *ptrLoc, err
 }
 
-type specifiedFieldVisitor struct {
-	// args
-	srcFileName           string
-	srcLine, srcCharacter int
-
-	// resp
-	specifiedField PosFileTypeNamer
-	foundMessage   PosFiler
-}
-
-type foundMessageVisitor struct {
-	// args
-	specifiedField PosFileTypeNamer
-
-	// resp
-	foundMessage PosFiler
-}
-
 type PosFiler interface {
 	Pos() ast.Position
 	File() *ast.File
@@ -82,6 +64,16 @@ func (f *FieldWrap) File() *ast.File {
 
 func (f *FieldWrap) TypeName() string {
 	return f.field.TypeName
+}
+
+type specifiedFieldVisitor struct {
+	// args
+	srcFileName           string
+	srcLine, srcCharacter int
+
+	// resp
+	specifiedField PosFileTypeNamer
+	foundMessage   PosFiler
 }
 
 func (v *specifiedFieldVisitor) Visit(node ast.Node) (w ast.Visitor) {
@@ -166,24 +158,12 @@ func (v *specifiedFieldVisitor) Visit(node ast.Node) (w ast.Visitor) {
 	return v
 }
 
-func same(s1, s2 []string) bool {
-	if len(s1) != len(s2) {
-		return false
-	}
-	for i, ss1 := range s1 {
-		if ss1 != s2[i] {
-			return false
-		}
-	}
-	return true
-}
+type foundMessageVisitor struct {
+	// args
+	specifiedField PosFileTypeNamer
 
-func toPkg(s string) ([]string, string) {
-	splittedS := strings.Split(s, ".")
-	if len(splittedS) == 0 {
-		return []string{}, s
-	}
-	return splittedS[:len(splittedS)-1], splittedS[len(splittedS)-1]
+	// resp
+	foundMessage PosFiler
 }
 
 func (v *foundMessageVisitor) Visit(node ast.Node) (w ast.Visitor) {
@@ -324,9 +304,26 @@ resp:
 }
 
 func isExist(fname string) bool {
-	if f, err := os.Stat(fname); os.IsNotExist(err) || f.IsDir() {
+	f, err := os.Stat(fname)
+	return !(os.IsNotExist(err) || f.IsDir())
+}
+
+func same(s1, s2 []string) bool {
+	if len(s1) != len(s2) {
 		return false
-	} else {
-		return true
 	}
+	for i, ss1 := range s1 {
+		if ss1 != s2[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func toPkg(s string) ([]string, string) {
+	splittedS := strings.Split(s, ".")
+	if len(splittedS) == 0 {
+		return []string{}, s
+	}
+	return splittedS[:len(splittedS)-1], splittedS[len(splittedS)-1]
 }
