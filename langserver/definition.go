@@ -76,7 +76,7 @@ type specifiedFieldVisitor struct {
 	foundMessage   PosFiler
 }
 
-func (v *specifiedFieldVisitor) Visit(node ast.Node) (w ast.Visitor) {
+func (v *specifiedFieldVisitor) Visit(node ast.Node) ast.Visitor {
 	// walk for getting a userspecified field
 	fileName, line, character := v.srcFileName, v.srcLine, v.srcCharacter
 	switch n := node.(type) {
@@ -108,50 +108,31 @@ func (v *specifiedFieldVisitor) Visit(node ast.Node) (w ast.Visitor) {
 			}
 			return nil
 		}
-
-		// TODO: Fix it.
-		// n.InType(type) is *ast.File, therefore NoahOrberg/x/protobuf repository is broken.
-
-		// if strings.Contains(fileName, n.File().Name) &&
-		// 	n.InTypeNamePosStart.Line == line &&
-		// 	n.InTypeNamePosStart.Character <= character && character <= n.InTypeNamePosEnd.Character {
-		// 	switch nn := n.InType.(type) {
-		// 	case *ast.Message:
-		// 		log.L().Info("Found!")
-		// 		v.foundMessage = nn
-		// 		return nil
-		// 	}
-		// }
-		//
-		// log.L().Info("params", zap.String("arg", fileName), zap.String("walked", n.File().Name))
-		//
-		// if strings.Contains(fileName, n.File().Name) &&
-		// 	n.OutTypeNamePosStart.Line == line &&
-		// 	n.OutTypeNamePosStart.Character <= character && character <= n.OutTypeNamePosEnd.Character {
-		// 	switch nn := n.OutType.(type) {
-		// 	case *ast.Message:
-		// 		log.L().Info("Found!")
-		// 		v.foundMessage = nn
-		// 		return nil
-		// 	case *ast.File:
-		// 		log.L().Info("Found!")
-		// 		stdlog.Println("name is ", nn.Name)
-		// 		stdlog.Println("messages is ", nn.Messages)
-		// 	}
-		// }
 	case *ast.Field:
+		log.L().Info("Field",
+			zap.String("name", n.Name),
+			zap.Any("start-line", n.Start.Line),
+			zap.Any("start-char", n.Start.Character),
+			zap.Any("end-line", n.End.Line),
+			zap.Any("end-char", n.End.Character),
+			zap.Any("line", line),
+			zap.Any("character", character),
+		)
 		if strings.Contains(fileName, n.File().Name) &&
 			n.Pos().Line == line &&
 			n.Start.Character <= character && character <= n.End.Character {
 
-			if nn, ok := n.Type.(*ast.Message); ok {
-				// NOTE: for inner message
+			switch nn := n.Type.(type) {
+			case *ast.Message:
+				log.L().Info("*ast.Message in specifiedFieldVisitor")
 				v.foundMessage = nn
-			} else {
+			default:
+				log.L().Info("unknown in specifiedFieldVisitor")
 				v.specifiedField = &FieldWrap{
 					field: n,
 				}
 			}
+			log.L().Info("Found a Field!")
 			return nil
 		}
 	}
@@ -166,16 +147,23 @@ type foundMessageVisitor struct {
 	foundMessage PosFiler
 }
 
-func (v *foundMessageVisitor) Visit(node ast.Node) (w ast.Visitor) {
+func (v *foundMessageVisitor) Visit(node ast.Node) ast.Visitor {
 	// walk for getting specifiedField definition
+	log.L().Info("visit")
+	defer func() {
+		if err := recover(); err != nil {
+			log.L().Info("failed", zap.Any("err", err))
+		}
+	}()
 	switch n := node.(type) {
 	case *ast.Message:
+		log.L().Info("handle as a Message", zap.String("name", n.Name))
 		pkg, splitedName := toPkg(v.specifiedField.TypeName())
 
-		log.L().Info("print info",
-			zap.Strings("pkg", pkg), zap.Strings("nodePackage", node.File().Package))
-		log.L().Info("print info",
-			zap.String("splitedName", splitedName), zap.String("nName", n.Name))
+		// log.L().Info("print info",
+		// 	zap.Strings("pkg", pkg), zap.Strings("nodePackage", node.File().Package))
+		// log.L().Info("print info",
+		// 	zap.String("splitedName", splitedName), zap.String("nName", n.Name))
 
 		if splitedName == n.Name {
 			if len(pkg) == 0 { // TODO: why pkg is zero-array? (when same package)
@@ -184,16 +172,15 @@ func (v *foundMessageVisitor) Visit(node ast.Node) (w ast.Visitor) {
 				v.foundMessage = n
 			}
 		}
-		return nil
-	case *ast.Enum:
-		if v.specifiedField.TypeName() == n.Name &&
-			same(v.specifiedField.File().Package, node.File().Package) {
-			v.foundMessage = n
+
+		if v.foundMessage == nil {
+			return v
 		}
 		return nil
+	default:
+		log.L().Info("continue!!")
+		return v
 	}
-
-	return v
 }
 
 func resolve(ctx context.Context, params *lsp.TextDocumentPositionParams, fileSet *ast.FileSet) (*lsp.Location, error) {

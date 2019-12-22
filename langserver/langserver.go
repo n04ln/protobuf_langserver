@@ -34,6 +34,20 @@ func NewHandler() jsonrpc2.Handler {
 		}).handle)
 }
 
+func (h *handler) parse(fname string) error {
+	var err error
+	h.ast, err = parse(fname)
+	if err != nil {
+		log.L().Error("failed parse uri",
+			zap.String("uri", fname))
+		return &jsonrpc2.Error{
+			Code:    jsonrpc2.CodeInvalidRequest,
+			Message: "cannot parse",
+		}
+	}
+	return nil
+}
+
 func (h *handler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (interface{}, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -62,23 +76,18 @@ func (h *handler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 		}
 
 		// NOTE: if target file is already parsed, ignore it
-		if h.ast != nil {
+		if h.ast != nil && len(h.ast.Files) != 0 {
 			for _, f := range h.ast.Files {
 				if strings.Contains(string(params.TextDocument.URI), f.Name) {
 					// NOTE: ignore
+					log.L().Info("ignore parsing", zap.String("fname", string(params.TextDocument.URI)))
 					return nil, nil
 				}
 			}
 		}
 
-		h.ast, err = parse(string(params.TextDocument.URI))
-		if err != nil {
-			log.L().Error("failed parse uri",
-				zap.String("uri", string(params.TextDocument.URI)), zap.Error(err))
-			return nil, &jsonrpc2.Error{
-				Code:    jsonrpc2.CodeInvalidRequest,
-				Message: "cannot parse",
-			}
+		if err := h.parse(string(params.TextDocument.URI)); err != nil {
+			return nil, err
 		}
 		log.L().Info("success! parsed uri", zap.String("uri", string(params.TextDocument.URI)))
 
@@ -99,14 +108,8 @@ func (h *handler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 				Message: "invalid params",
 			}
 		}
-		h.ast, err = parse(string(params.TextDocument.URI))
-		if err != nil {
-			log.L().Error("failed parse uri",
-				zap.String("uri", string(params.TextDocument.URI)))
-			return nil, &jsonrpc2.Error{
-				Code:    jsonrpc2.CodeInvalidRequest,
-				Message: "cannot parse",
-			}
+		if err := h.parse(string(params.TextDocument.URI)); err != nil {
+			return nil, err
 		}
 		log.L().Info("success! parsed uri", zap.String("uri", string(params.TextDocument.URI)))
 
@@ -128,6 +131,22 @@ func (h *handler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 		}
 
 		log.L().Info("toDocPosParams", zap.Any("params", params))
+
+		// TODO: if missing file at h.ast, should re-parse
+		if h.ast != nil && len(h.ast.Files) != 0 {
+			fcnt := 0
+			for _, f := range h.ast.Files {
+				if !strings.Contains(string(params.TextDocument.URI), f.Name) {
+					fcnt++
+				}
+			}
+			if fcnt == len(h.ast.Files) {
+				if err := h.parse(string(params.TextDocument.URI)); err != nil {
+					return nil, err
+				}
+				log.L().Info("re-parsed")
+			}
+		}
 
 		resp, err := h.handleDefinition(ctx, conn, req, params)
 		if err != nil {
