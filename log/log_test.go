@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/NoahOrberg/protobuf_langserver/log"
+	"github.com/n04ln/protobuf_langserver/log"
 )
 
 func TestInit(t *testing.T) {

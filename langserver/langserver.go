@@ -7,9 +7,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/NoahOrberg/protobuf_langserver/log"
-	"github.com/NoahOrberg/protobuf_langserver/protobuf"
-	"github.com/NoahOrberg/x/protobuf/ast"
+	"github.com/n04ln/protobuf_langserver/log"
+	"github.com/n04ln/protobuf_langserver/protobuf"
+	"github.com/n04ln/x/protobuf/ast"
 	"github.com/pkg/errors"
 	"github.com/sourcegraph/go-lsp"
 	"github.com/sourcegraph/jsonrpc2"

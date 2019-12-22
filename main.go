@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/NoahOrberg/protobuf_langserver/langserver"
-	"github.com/NoahOrberg/protobuf_langserver/log"
+	"github.com/n04ln/protobuf_langserver/langserver"
+	"github.com/n04ln/protobuf_langserver/log"
 	"github.com/sourcegraph/jsonrpc2"
 	"go.uber.org/zap"
 )

@@ -36,7 +36,6 @@ func Init(output io.Writer) {
 		core := zapcore.NewCore(encoder, zapcore.AddSync(output), zapcore.InfoLevel)
 		l = zap.New(core)
 	})
-	zap.NewProduction()
 }
 
 // L returns *zap.Logger

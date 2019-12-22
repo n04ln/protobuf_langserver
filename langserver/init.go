@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/NoahOrberg/protobuf_langserver/log"
+	"github.com/n04ln/protobuf_langserver/log"
 	"github.com/sourcegraph/go-lsp"
 	"github.com/sourcegraph/jsonrpc2"
 )
